@@ -5,6 +5,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(PROJECT_ROOT "/home/student/libpynq-5EID0-2023-v0.3.0" CACHE PATH "project root")
 
 set(LIBPYNQ_A "${PROJECT_ROOT}/build/lib/libpynq.a")
@@ -27,11 +30,13 @@ add_dependencies(pynq libpynq_build)
 find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs)
 
 add_executable(main
-    main.cpp   # C++ entry point — camera + MQTT integration
-    mqtt.c     # MQTT/UART command receiver and stepper navigation
-    single.c   # VL53L0X single-sensor helper
-    vl53l0x.c  # VL53L0X driver
+    main.cpp
+    mqtt.cpp
+    single.cpp
+    vl53l0x.cpp
     vl53l0x.h
+    scan.cpp
+    camera.cpp
 )
 
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
