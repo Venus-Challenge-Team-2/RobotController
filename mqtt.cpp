@@ -18,12 +18,12 @@ extern bool scanning;
 static float steps_cm  = 64.2f;
 static float steps_rad = 408.709874761f;
 
-static float angle = 0.0f;
-static float x     = 0.0f;
-static float y     = 0.0f;
+float robot_angle = 0.0f;
+float robot_x     = 50.0f;
+float robot_y     = 50.0f;
 
-static int target_x = 0;
-static int target_y = 0;
+static int target_x = 50;
+static int target_y = 50;
 
 static int   update = 1;
 static char *message = nullptr;
@@ -111,22 +111,22 @@ void mqtt_update_position(void)
     float delta_angle = (delta_left - delta_right) / (2.0f * steps_rad);
     float delta_dist  = (delta_left + delta_right) / (2.0f * steps_cm);
 
-    angle += delta_angle;
+    robot_angle += delta_angle;
 
-    float avg_angle = angle - (delta_angle / 2.0f);
-    x += delta_dist * std::sin(avg_angle);
-    y += delta_dist * std::cos(avg_angle);
+    float avg_angle = robot_angle - (delta_angle / 2.0f);
+    robot_x += delta_dist * std::sin(avg_angle);
+    robot_y += delta_dist * std::cos(avg_angle);
 
     update = 1;
 }
 
 void mqtt_navigation_control(void)
 {
-    float goal_angle  = std::atan2((float)(target_x - x), (float)(target_y - y));
-    float dx          = (float)(target_x) - x;
-    float dy          = (float)(target_y) - y;
+    float goal_angle  = std::atan2((float)(target_x - robot_x), (float)(target_y - robot_y));
+    float dx          = (float)(target_x) - robot_x;
+    float dy          = (float)(target_y) - robot_y;
     float distance    = std::sqrt(dx * dx + dy * dy);
-    float angle_diff  = goal_angle - angle;
+    float angle_diff  = goal_angle - robot_angle;
 
     while (angle_diff >  PI) angle_diff -= 2.0f * PI;
     while (angle_diff < -PI) angle_diff += 2.0f * PI;
@@ -163,12 +163,12 @@ void uart_send_string(const std::string& str) {
 }
 
 void mqtt_send_coords(void) {
-    int size_s = std::snprintf(nullptr, 0, "x = %.2f y = %.2f angle = %.2f\n", x, y, angle);
+    int size_s = std::snprintf(nullptr, 0, "x = %.2f y = %.2f angle = %.2f\n", robot_x, robot_y, robot_angle);
     if (size_s <= 0) return; 
 
     auto size = static_cast<size_t>(size_s);
     std::string buf(size, '\0');
-    std::snprintf(&buf[0], size + 1, "x = %.2f y = %.2f angle = %.2f\n", x, y, angle);
+    std::snprintf(&buf[0], size + 1, "x = %.2f y = %.2f angle = %.2f\n", robot_x, robot_y, robot_angle);
 
     uart_send_string(buf);
     update = 0;

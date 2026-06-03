@@ -30,6 +30,7 @@ int main() {
         mqtt_read();
         mqtt_update_position();
         mqtt_navigation_control();
+        camera_run();
 
         if (mqtt_needs_update()) {
             mqtt_send_coords();

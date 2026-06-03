@@ -5,7 +5,11 @@ extern "C" {
 }
 #include <cstdio>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
+#include "mqtt.h"
 
+extern bool scanning;
 cv::VideoCapture camera(0);
 
 void camera_init() {
@@ -83,6 +87,21 @@ void camera_run() {
             if (solidity < 0.65) continue;
 
             double size = std::max(sz.width, sz.height) / (focalLength / distance);
+
+            double x_rel = (center.x - frame.cols / 2.0) * distanceX / focalLength;
+            double y_rel = distanceX;
+
+            int gx = (int)(robot_x + x_rel * std::cos(robot_angle) + y_rel * std::sin(robot_angle));
+            int gy = (int)(robot_y - x_rel * std::sin(robot_angle) + y_rel * std::cos(robot_angle));
+
+            if (gx >= 0 && gx < 1000 && gy >= 0 && gy < 1000) {
+                std::ostringstream oss;
+                oss << "222"
+                    << std::setfill('0') << std::setw(3) << gx
+                    << std::setfill('0') << std::setw(3) << gy
+                    << "\n";
+                uart_send_string(oss.str());
+            }
 
             cv::Point2f corners[4];
             rotRect.points(corners);
