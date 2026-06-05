@@ -40,6 +40,7 @@ int main() {
             scan();
             scanning = false;
         }
+        sleep_msec(100);
     }
 
     mqtt_destroy();
