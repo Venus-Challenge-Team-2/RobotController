@@ -10,10 +10,13 @@ extern "C" {
 #include "mqtt.h"
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 #define PI 3.14159265358979323846f
 
 extern bool scanning;
+extern double robot_temperature;
 
 static float steps_cm  = 64.2f;
 static float steps_rad = 408.709874761f;
@@ -150,6 +153,7 @@ int mqtt_needs_update(void)
 }
 
 void uart_send_string(const std::string& str) {
+    if (str.empty()) return;
     uint32_t length = static_cast<uint32_t>(str.length());
 
     uart_send(UART0, static_cast<uint8_t>(length        & 0xFF));
@@ -163,14 +167,20 @@ void uart_send_string(const std::string& str) {
 }
 
 void mqtt_send_coords(void) {
-    int size_s = std::snprintf(nullptr, 0, "x = %.2f y = %.2f angle = %.2f\n", robot_x, robot_y, robot_angle);
-    if (size_s <= 0) return; 
+    std::ostringstream oss;
+    int gx = (int)(robot_x / 3.0f);
+    int gy = (int)(robot_y / 3.0f);
+    int temp = (int)robot_temperature;
 
-    auto size = static_cast<size_t>(size_s);
-    std::string buf(size, '\0');
-    std::snprintf(&buf[0], size + 1, "x = %.2f y = %.2f angle = %.2f\n", robot_x, robot_y, robot_angle);
+    if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+        oss << "3" << std::setfill('0') << std::setw(3) << gx
+            << std::setfill('0') << std::setw(3) << gy
+            << std::setfill('0') << std::setw(3) << temp << "\n";
+    }
 
-    uart_send_string(buf);
+    if (!oss.str().empty()) {
+        uart_send_string(oss.str());
+    }
     update = 0;
 }
 

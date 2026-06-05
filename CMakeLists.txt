@@ -37,6 +37,8 @@ add_executable(main
     vl53l0x.h
     scan.cpp
     camera.cpp
+    ntc_temperature.cpp
+    ntc_temperature.h
 )
 
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

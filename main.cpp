@@ -4,6 +4,7 @@ extern "C" {
 }
 #include "vl53l0x.h"
 #include "mqtt.h"
+#include "ntc_temperature.h"
 #include <cstdio>
 #include <iostream>
 
@@ -15,6 +16,8 @@ extern bool scanning;
 extern void init_distance();
 extern uint32_t read_distance(void);
 
+double robot_temperature = 0.0;
+
 int main() {
     pynq_init();
 
@@ -23,6 +26,7 @@ int main() {
     iic_init(IIC0);
 
     init_distance();
+    ntc_temperature_init(NULL);
     mqtt_init();
     camera_init();
 
@@ -31,6 +35,8 @@ int main() {
         mqtt_update_position();
         mqtt_navigation_control();
         camera_run();
+
+        ntc_temperature_read_celsius(&robot_temperature, NULL, NULL);
 
         if (mqtt_needs_update()) {
             mqtt_send_coords();
