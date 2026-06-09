@@ -91,7 +91,7 @@ void camera_run() {
         if (!contours.empty()) allContours.push_back({contours, name});
     }
 
-    std::cout << "\033[H\033[J";
+    //std::cout << "\033[H\033[J";
     std::ostringstream oss;
     for (auto& [contours, name] : allContours) {
         for (const auto& contour : contours) {

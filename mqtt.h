@@ -12,9 +12,14 @@ void mqtt_send_coords();
 void mqtt_destroy();
 
 void uart_send_string(const std::string& str);
+void set_stepper_command(int16_t left, int16_t right);
 
 extern float robot_x;
 extern float robot_y;
 extern float robot_angle;
+extern float robot_caster_phi;
+
+extern const float steps_cm;
+extern const float steps_rad;
 
 #endif

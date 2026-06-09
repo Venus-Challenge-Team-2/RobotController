@@ -7,6 +7,7 @@ extern "C" {
 #include "ntc_temperature.h"
 #include <cstdio>
 #include <iostream>
+#include <chrono>
 
 extern void camera_init();
 extern void camera_run();
@@ -30,23 +31,24 @@ int main() {
     mqtt_init();
     camera_init();
 
+    auto last_update = std::chrono::steady_clock::now();
     while (true) {
         mqtt_read();
         mqtt_update_position();
         mqtt_navigation_control();
-        camera_run();
 
-        ntc_temperature_read_celsius(&robot_temperature, NULL, NULL);
-
-        if (mqtt_needs_update()) {
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() >= 1000) {
+            camera_run();
+            ntc_temperature_read_celsius(&robot_temperature, NULL, NULL);
             mqtt_send_coords();
-        }
 
-        if (scanning) {
-            scan();
-            scanning = false;
+            if (scanning) {
+                scan();
+                scanning = false;
+            }
+            last_update = std::chrono::steady_clock::now();
         }
-        sleep_msec(100);
     }
 
     mqtt_destroy();

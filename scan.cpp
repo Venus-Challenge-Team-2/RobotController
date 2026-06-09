@@ -11,87 +11,52 @@ extern "C" {
 #include <iomanip>
 
 extern uint32_t read_distance(void);
-void uart_send_string(const std::string& str);
-
 #include "mqtt.h"
 
-#define PI 3.14159265358979323846
-#define map_size 100
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
 
 bool scanning = false;
 extern void camera_run();
 
 void scan() {
-    int map[map_size][map_size] = {0};
-    int offset = map_size/2;
+    printf("Starting smooth scan...\n");
 
-    mqtt_update_position();
-    float start_x = robot_x;
-    float start_y = robot_y;
+    stepper_set_speed(65535, 65535);
 
-    int last_gx = 0;
-    int last_gy = 0;
-    double number = 16.0;
-    float steps_per_sample = (2.0f * (float)PI / (float)number) * 408.709874761f;
+    int total_steps = (int)(steps_rad * 2.0f * PI);
+    set_stepper_command((int16_t)total_steps, (int16_t)total_steps);
 
-    for (int i = 0; i < (int)number; i++) {
+    while (!stepper_steps_done()) {
         mqtt_update_position();
-        camera_run();
+
+        // Optional: camera_run() could be called here if needed,
+        // but it might slow down the loop too much.
+        // camera_run();
 
         uint32_t dist_mm = read_distance();
-        double distance = dist_mm / 10.0;
 
-        int gx = (int)(robot_x + std::sin(robot_angle) * distance);
-        int gy = (int)(robot_y + std::cos(robot_angle) * distance);
+        if (dist_mm > 0 && dist_mm < 1000) {
+            float dist_cm = dist_mm / 10.0f;
 
-        int map_x = gx - (int)start_x + offset;
-        int map_y = gy - (int)start_y + offset;
+            float total_dist = (dist_cm + 5.0f) / 3.0f;
 
-        if (map_x >= 0 && map_x < map_size && map_y >= 0 && map_y < map_size) {
-            map[map_x][map_y] = 1;
-        }
+            float gx_cm = robot_x + std::sin(robot_angle) * total_dist;
+            float gy_cm = robot_y + std::cos(robot_angle) * total_dist;
 
-        if (!(last_gx == 0 && last_gy == 0)) {
-            int vector_x = gx - last_gx;
-            int vector_y = gy - last_gy;
-            int d = (int)std::sqrt(vector_x*vector_x + vector_y*vector_y);
-            if (d > 0) {
-                for (int j = 0; j <= d; j++) {
-                    int px = last_gx + vector_x * j / d - (int)start_x + offset;
-                    int py = last_gy + vector_y * j / d - (int)start_y + offset;
-                    if (px >= 0 && px < map_size && py >= 0 && py < map_size) {
-                        map[px][py] = 1;
-                    }
-                }
-            }
-        }
+            int gx = (int)(gx_cm);
+            int gy = (int)(gy_cm);
 
-        last_gx = gx;
-        last_gy = gy;
-
-        stepper_steps((int16_t)steps_per_sample, (int16_t)-steps_per_sample);
-        while (!stepper_steps_done());
-    }
-
-    std::ostringstream accumulated_oss;
-
-    for (int i = 0; i < map_size; ++i) {
-        for (int j = 0; j < map_size; ++j) {
-            if (map[i][j] == 1) {
-                int gx = i - offset + (int)start_x;
-                int gy = j - offset + (int)start_y;
-                if (gx >= 0 && gx < 1000 && gy >= 0 && gy < 1000) {
-                    accumulated_oss << "222"
-                                    << std::setfill('0') << std::setw(3) << gx
-                                    << std::setfill('0') << std::setw(3) << gy
-                                    << "\n";
-                }
+            // Boundary check for the 333x333 visualization grid (1000/3)
+            if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+                std::ostringstream oss;
+                oss << "222" << std::setfill('0') << std::setw(3) << gx
+                    << std::setfill('0') << std::setw(3) << gy << "\n";
+                uart_send_string(oss.str());
             }
         }
     }
-
-    std::string final_payload = accumulated_oss.str();
-    if (!final_payload.empty()) {
-        uart_send_string(final_payload);
-    }
+    stepper_set_speed(15000, 15000);
+    printf("Scan completed.\n");
 }
