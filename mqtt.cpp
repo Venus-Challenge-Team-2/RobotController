@@ -123,7 +123,7 @@ void mqtt_update_position(void)
     float delta_left  = tick_left  * (active_left_cmd  >= 0 ? 1.0f : -1.0f);
     float delta_right = tick_right * (active_right_cmd >= 0 ? 1.0f : -1.0f);
 
-    float delta_angle = (delta_left - delta_right) / (2.0f * steps_rad);
+    float delta_angle = (delta_right - delta_left) / (2.0f * steps_rad);
     float delta_dist  = (delta_left + delta_right) / (2.0f * steps_cm);
 
     // Kinematic update for caster
@@ -149,8 +149,8 @@ void mqtt_update_position(void)
     robot_angle += delta_angle;
 
     float avg_angle = robot_angle - (delta_angle / 2.0f);
-    robot_x += delta_dist * std::sin(avg_angle);
-    robot_y += delta_dist * std::cos(avg_angle);
+    robot_x += delta_dist * std::sin(avg_angle) / 3.0f;
+    robot_y += delta_dist * std::cos(avg_angle) / 3.0f;
 
     update = 1;
 }
@@ -171,12 +171,24 @@ void mqtt_navigation_control(void)
     if (std::abs(angle_diff) > 0.1f && distance > 1.0f) {
         int req_steps = (int)(steps_rad * angle_diff);
         printf("MQTT nav: rotating %.2f rad\n", angle_diff);
-        set_stepper_command((int16_t)req_steps, (int16_t)(-req_steps));
+        set_stepper_command((int16_t)(-req_steps), (int16_t)req_steps);
     } else if (distance > 1.0f) {
-        int req_steps = (int)(steps_cm * distance);
-        printf("MQTT nav: moving %.2f cm\n", distance);
+        int req_steps = (int)(steps_cm * distance * 3.0f);
+        printf("MQTT nav: moving %.2f cm\n", distance * 3.0f);
         set_stepper_command((int16_t)req_steps, (int16_t)req_steps);
     }
+}
+
+void mqtt_cancel_navigation(void)
+{
+    target_x = (int)robot_x;
+    target_y = (int)robot_y;
+    stepper_reset();
+    active_left_cmd = 0;
+    active_right_cmd = 0;
+    prev_completed_left = 0;
+    prev_completed_right = 0;
+    printf("MQTT nav: CANCELLED (detected black line)\n");
 }
 
 int mqtt_needs_update(void)
@@ -200,8 +212,8 @@ void uart_send_string(const std::string& str) {
 
 void mqtt_send_coords(void) {
     std::ostringstream oss;
-    int gx = (int)(robot_x / 3.0f);
-    int gy = (int)(robot_y / 3.0f);
+    int gx = (int)(robot_x);
+    int gy = (int)(robot_y);
     int temp = (int)robot_temperature;
 
     if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {

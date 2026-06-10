@@ -144,8 +144,8 @@ void camera_run() {
                     for (float gy_rel = groundRect.y; gy_rel < groundRect.y + groundRect.height; gy_rel += 3.0f) {
                         for (float gx_rel = groundRect.x; gx_rel < groundRect.x + groundRect.width; gx_rel += 3.0f) {
                             if (cv::pointPolygonTest(groundContour, cv::Point2f(gx_rel, gy_rel), false) >= 0) {
-                                int gx = (int)((robot_x + gx_rel * std::cos(robot_angle) + gy_rel * std::sin(robot_angle)) / 3.0f);
-                                int gy = (int)((robot_y - gx_rel * std::sin(robot_angle) + gy_rel * std::cos(robot_angle)) / 3.0f);
+                                int gx = (int)(robot_x + (gx_rel * std::cos(robot_angle) + gy_rel * std::sin(robot_angle)) / 3.0f);
+                                int gy = (int)(robot_y + (gy_rel * std::cos(robot_angle) - gx_rel * std::sin(robot_angle)) / 3.0f);
                                 if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
                                     oss << "214" << std::setfill('0') << std::setw(3) << gx
                                         << std::setfill('0') << std::setw(3) << gy << "\n";
@@ -160,8 +160,8 @@ void camera_run() {
                 else if (size >= 5.0 && size <= 7.0) sizeDigit = 2;
 
                 if (sizeDigit != -1 && colorIdx != -1) {
-                    int gx = (int)((robot_x + x_rel * std::cos(robot_angle) + y_rel * std::sin(robot_angle)) / 3.0f);
-                    int gy = (int)((robot_y - x_rel * std::sin(robot_angle) + y_rel * std::cos(robot_angle)) / 3.0f);
+                    int gx = (int)(robot_x + (x_rel * std::cos(robot_angle) + y_rel * std::sin(robot_angle)) / 3.0f);
+                    int gy = (int)(robot_y + (y_rel * std::cos(robot_angle) - x_rel * std::sin(robot_angle)) / 3.0f);
 
                     if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
                         oss << "2" << colorIdx << sizeDigit << std::setfill('0') << std::setw(3) << gx

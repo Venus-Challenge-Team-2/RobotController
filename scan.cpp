@@ -26,7 +26,7 @@ void scan() {
     stepper_set_speed(65535, 65535);
 
     int total_steps = (int)(steps_rad * 2.0f * PI);
-    set_stepper_command((int16_t)total_steps, (int16_t)total_steps);
+    set_stepper_command((int16_t)total_steps, (int16_t)-total_steps);
 
     while (!stepper_steps_done()) {
         mqtt_update_position();
@@ -37,16 +37,16 @@ void scan() {
 
         uint32_t dist_mm = read_distance();
 
-        if (dist_mm > 0 && dist_mm < 1000) {
+        if (dist_mm > 0 && dist_mm < 400) {
             float dist_cm = dist_mm / 10.0f;
 
-            float total_dist = (dist_cm + 5.0f) / 3.0f;
+            float total_dist_coords = (dist_cm + 5.0f) / 3.0f;
 
-            float gx_cm = robot_x + std::sin(robot_angle) * total_dist;
-            float gy_cm = robot_y + std::cos(robot_angle) * total_dist;
+            float gx_coords = robot_x + std::sin(robot_angle) * total_dist_coords;
+            float gy_coords = robot_y + std::cos(robot_angle) * total_dist_coords;
 
-            int gx = (int)(gx_cm);
-            int gy = (int)(gy_cm);
+            int gx = (int)(gx_coords);
+            int gy = (int)(gy_coords);
 
             // Boundary check for the 333x333 visualization grid (1000/3)
             if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {

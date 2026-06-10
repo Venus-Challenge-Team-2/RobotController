@@ -7,6 +7,7 @@ void mqtt_init();
 void mqtt_read();
 void mqtt_update_position();
 void mqtt_navigation_control();
+void mqtt_cancel_navigation();
 int mqtt_needs_update();
 void mqtt_send_coords();
 void mqtt_destroy();

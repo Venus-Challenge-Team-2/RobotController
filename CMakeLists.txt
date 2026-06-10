@@ -39,6 +39,8 @@ add_executable(main
     camera.cpp
     ntc_temperature.cpp
     ntc_temperature.h
+    tcs3200.c
+    tcs3200.h
 )
 
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
