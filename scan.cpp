@@ -33,7 +33,7 @@ void scan() {
 
         // Optional: camera_run() could be called here if needed,
         // but it might slow down the loop too much.
-        // camera_run();
+        camera_run();
 
         uint32_t dist_mm = read_distance();
 

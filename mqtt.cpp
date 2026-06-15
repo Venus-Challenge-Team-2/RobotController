@@ -168,6 +168,9 @@ void mqtt_navigation_control(void)
 
     if (!stepper_steps_done()) return;
 
+    active_left_cmd = 0;
+    active_right_cmd = 0;
+
     if (std::abs(angle_diff) > 0.1f && distance > 1.0f) {
         int req_steps = (int)(steps_rad * angle_diff);
         printf("MQTT nav: rotating %.2f rad\n", angle_diff);
@@ -188,7 +191,6 @@ void mqtt_cancel_navigation(void)
     active_right_cmd = 0;
     prev_completed_left = 0;
     prev_completed_right = 0;
-    printf("MQTT nav: CANCELLED (detected black line)\n");
 }
 
 int mqtt_needs_update(void)
@@ -226,6 +228,15 @@ void mqtt_send_coords(void) {
         uart_send_string(oss.str());
     }
     update = 0;
+}
+
+bool mqtt_is_idle(void) {
+    //std::cout << active_left_cmd << std::endl;
+    return (active_left_cmd == 0 && active_right_cmd == 0 && stepper_steps_done());
+}
+
+void mqtt_send_idle_msg(void) {
+    uart_send_string("5\n");
 }
 
 void mqtt_destroy(void)

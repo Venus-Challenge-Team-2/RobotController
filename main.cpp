@@ -29,7 +29,6 @@ int main() {
 
     switchbox_set_pin(IO_AR_SCL, SWB_IIC0_SCL);
     switchbox_set_pin(IO_AR_SDA, SWB_IIC0_SDA);
-    switchbox_set_pin(IO_AR_RST, SWB_GPIO);
 
     iic_init(IIC0);
 
@@ -60,8 +59,14 @@ int main() {
         mqtt_navigation_control();
 
         double freq = tcs3200_read_frequency_hz(&color_sensor);
+        uint32_t dist = read_distance();
+
         if (!tcs3200_is_white(&color_sensor, freq)) {
             mqtt_cancel_navigation();
+            printf("MQTT nav: CANCELLED (detected black line)\n");
+        } else if (dist > 0 && dist < 50) {
+            mqtt_cancel_navigation();
+            printf("MQTT nav: CANCELLED (distance too close) %d\n", dist);
         }
 
         auto now = std::chrono::steady_clock::now();
@@ -73,6 +78,8 @@ int main() {
             if (scanning) {
                 scan();
                 scanning = false;
+            } else if (mqtt_is_idle()) {
+                mqtt_send_idle_msg();
             }
             last_update = std::chrono::steady_clock::now();
         }

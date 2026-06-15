@@ -108,7 +108,6 @@ bool tcs3200_is_white(const tcs3200_t *sensor, double frequency_hz) {
     if (!is_valid_sensor(sensor)) {
         return false;
     }
-
     return frequency_hz >= sensor->config.white_threshold_hz;
 }
 

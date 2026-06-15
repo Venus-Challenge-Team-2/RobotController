@@ -10,6 +10,8 @@ void mqtt_navigation_control();
 void mqtt_cancel_navigation();
 int mqtt_needs_update();
 void mqtt_send_coords();
+bool mqtt_is_idle();
+void mqtt_send_idle_msg();
 void mqtt_destroy();
 
 void uart_send_string(const std::string& str);

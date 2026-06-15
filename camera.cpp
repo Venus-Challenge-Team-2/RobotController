@@ -65,7 +65,7 @@ void camera_run() {
     cv::inRange(hsv, lowerBoundWhite, upperBoundWhite, maskWhite);
 
     cv::Scalar lowerBoundBlack(0, 0, 0);
-    cv::Scalar upperBoundBlack(180, 255, 100);
+    cv::Scalar upperBoundBlack(180, 255, 30);
     cv::inRange(hsv, lowerBoundBlack, upperBoundBlack, maskBlack);
 
     cv::Scalar lowerBoundGreen(40, 50, 100);
@@ -137,7 +137,7 @@ void camera_run() {
 
             if (name == "black") {
                 if (area_cm2 >= 100) {
-                    std::cout << "HOLE at (" << (int)x_rel << ", " << (int)y_rel << ") Area: " << (int)area_cm2 << "cm2" << std::endl;
+                    std::cout << "HOLE at (" << (int)x_rel << ", " << (int)y_rel << ") Height: " << (int)groundRect.height << "cm Width: " << (int)groundRect.width << "cm" << std::endl;
                     std::cout << "X: " <<robot_x << " Y: " << robot_y << std::endl;
                     // Fill the map with hole points (grid where each point is 3x3cm)
 

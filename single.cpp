@@ -35,7 +35,7 @@ int init_distance(void) {
 
 uint32_t read_distance(void) {
 	uint32_t iDistance = tofReadDistance(&sensor);
-	printf("Distance %dmm\n", iDistance);
+	//printf("Distance %dmm\n", iDistance);
 	fflush(stdout);
 	return iDistance;
 }
