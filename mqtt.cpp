@@ -49,6 +49,8 @@ static int16_t active_right_cmd = 0;
 static int     prev_completed_left  = 0;
 static int     prev_completed_right = 0;
 
+static bool    is_retreating = false;
+
 void set_stepper_command(int16_t left, int16_t right)
 {
     stepper_steps(left, right);
@@ -99,6 +101,7 @@ void mqtt_read(void)
         printf("MQTT scan command received\n");
         cursor = 0;
     }
+
 }
 
 void mqtt_update_position(void)
@@ -157,6 +160,7 @@ void mqtt_update_position(void)
 
 void mqtt_navigation_control(void)
 {
+    if (is_retreating) return;
     float goal_angle  = std::atan2((float)(target_x - robot_x), (float)(target_y - robot_y));
     float dx          = (float)(target_x) - robot_x;
     float dy          = (float)(target_y) - robot_y;
@@ -187,6 +191,7 @@ void mqtt_cancel_navigation(void)
     target_x = (int)robot_x;
     target_y = (int)robot_y;
     stepper_reset();
+    stepper_enable();
     active_left_cmd = 0;
     active_right_cmd = 0;
     prev_completed_left = 0;
@@ -231,12 +236,65 @@ void mqtt_send_coords(void) {
 }
 
 bool mqtt_is_idle(void) {
+    if (is_retreating && stepper_steps_done()) {
+        is_retreating = false;
+        target_x = (int)robot_x;
+        target_y = (int)robot_y;
+    }
     //std::cout << active_left_cmd << std::endl;
     return (active_left_cmd == 0 && active_right_cmd == 0 && stepper_steps_done());
 }
 
+bool mqtt_is_retreating(void) {
+    return is_retreating;
+}
+
 void mqtt_send_idle_msg(void) {
     uart_send_string("5\n");
+}
+
+void mqtt_send_work_msg(void) {
+    uart_send_string("6\n");
+}
+
+void mqtt_send_hole() {
+    float total_dist_coords = 5.0f / 3.0f;
+    float gx_coords = robot_x + std::sin(robot_angle) * total_dist_coords;
+    float gy_coords = robot_y + std::cos(robot_angle) * total_dist_coords;
+    int gx = (int)gx_coords;
+    int gy = (int)gy_coords;
+
+    if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+        std::ostringstream oss;
+        oss << "214" << std::setfill('0') << std::setw(3) << gx
+            << std::setfill('0') << std::setw(3) << gy << "\n";
+        uart_send_string(oss.str());
+    }
+}
+
+void mqtt_send_wall(uint32_t dist_mm) {
+    float dist_cm = dist_mm / 10.0f;
+    float total_dist_coords = (dist_cm + 5.0f) / 3.0f;
+    float gx_coords = robot_x + std::sin(robot_angle) * total_dist_coords;
+    float gy_coords = robot_y + std::cos(robot_angle) * total_dist_coords;
+    int gx = (int)gx_coords;
+    int gy = (int)gy_coords;
+
+    if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+        std::ostringstream oss;
+        oss << "212" << std::setfill('0') << std::setw(3) << gx
+            << std::setfill('0') << std::setw(3) << gy << "\n";
+        uart_send_string(oss.str());
+    }
+}
+
+void mqtt_evasive_move_back() {
+    if (is_retreating) return;
+    printf("EVASIVE ACTION: Moving back 10cm\n");
+    mqtt_cancel_navigation();
+    is_retreating = true;
+    int req_steps = (int)(steps_cm * 10.0f);
+    set_stepper_command((int16_t)(-req_steps), (int16_t)(-req_steps));
 }
 
 void mqtt_destroy(void)

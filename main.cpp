@@ -42,8 +42,8 @@ int main() {
         .s1_pin = IO_AR4,
         .s2_pin = IO_AR7,
         .s3_pin = IO_AR8,
-        .black_threshold_hz = 6000.0,
-        .white_threshold_hz = 7000.0,
+        .black_threshold_hz = 0.0,
+        .white_threshold_hz = 3000.0,
         .measure_window_ms = 15,
         .pulsecounter = PULSECOUNTER0,
     };
@@ -51,6 +51,7 @@ int main() {
 
     mqtt_init();
     camera_init();
+    sleep_msec(300);
 
     auto last_update = std::chrono::steady_clock::now();
     while (true) {
@@ -61,12 +62,16 @@ int main() {
         double freq = tcs3200_read_frequency_hz(&color_sensor);
         uint32_t dist = read_distance();
 
-        if (!tcs3200_is_white(&color_sensor, freq)) {
-            mqtt_cancel_navigation();
-            printf("MQTT nav: CANCELLED (detected black line)\n");
-        } else if (dist > 0 && dist < 50) {
-            mqtt_cancel_navigation();
-            printf("MQTT nav: CANCELLED (distance too close) %d\n", dist);
+        if(!mqtt_is_retreating()) {
+            if (!tcs3200_is_white(&color_sensor, freq)) {
+                printf("HOLE DETECTED by ground sensor!\n");
+                mqtt_send_hole();
+                mqtt_evasive_move_back();
+            } else if (dist > 0 && dist < 50) {
+                printf("MQTT nav: CANCELLED (distance too close) %d\n", dist);
+                mqtt_send_wall(dist);
+                mqtt_evasive_move_back();
+            }
         }
 
         auto now = std::chrono::steady_clock::now();
@@ -80,6 +85,9 @@ int main() {
                 scanning = false;
             } else if (mqtt_is_idle()) {
                 mqtt_send_idle_msg();
+                std::cout << "Sending idle\n";
+            } else {
+                mqtt_send_work_msg();
             }
             last_update = std::chrono::steady_clock::now();
         }

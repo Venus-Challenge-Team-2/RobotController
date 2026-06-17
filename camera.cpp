@@ -18,7 +18,7 @@ extern bool scanning;
 cv::VideoCapture camera(0);
 
 float robot_height_cm = 27.5;
-float camera_tilt_deg = 30.0; // Angle down from horizontal
+float camera_tilt_deg = 45.0; // Angle down from horizontal
 
 cv::Point2f projectToGround(float px, float py, int w, int h, float focalLength, float H, float tiltDeg) {
     float theta = tiltDeg * M_PI / 180.0;
@@ -52,15 +52,15 @@ void camera_run() {
     double focalLength = 837.0;
     cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
 
-    cv::Scalar lowerBoundRed1(0, 100, 100);
-    cv::Scalar upperBoundRed1(10, 255, 255);
-    cv::Scalar lowerBoundRed2(160, 100, 100);
-    cv::Scalar upperBoundRed2(180, 255, 255);
+    cv::Scalar lowerBoundRed1(0, 140, 140);
+    cv::Scalar upperBoundRed1(10, 215, 210);
+    cv::Scalar lowerBoundRed2(170, 140, 140);
+    cv::Scalar upperBoundRed2(180, 210, 210);
     cv::inRange(hsv, lowerBoundRed1, upperBoundRed1, maskRed1);
     cv::inRange(hsv, lowerBoundRed2, upperBoundRed2, maskRed2);
     cv::bitwise_or(maskRed1, maskRed2, maskRed);
 
-    cv::Scalar lowerBoundWhite(140, 0, 200);
+    cv::Scalar lowerBoundWhite(140, 0, 230);
     cv::Scalar upperBoundWhite(180, 10, 255);
     cv::inRange(hsv, lowerBoundWhite, upperBoundWhite, maskWhite);
 
@@ -68,12 +68,12 @@ void camera_run() {
     cv::Scalar upperBoundBlack(180, 255, 30);
     cv::inRange(hsv, lowerBoundBlack, upperBoundBlack, maskBlack);
 
-    cv::Scalar lowerBoundGreen(40, 50, 100);
-    cv::Scalar upperBoundGreen(80, 255, 255);
+    cv::Scalar lowerBoundGreen(40, 50, 120);
+    cv::Scalar upperBoundGreen(60, 120, 255);
     cv::inRange(hsv, lowerBoundGreen, upperBoundGreen, maskGreen);
 
-    cv::Scalar lowerBoundBlue(100, 50, 100);
-    cv::Scalar upperBoundBlue(130, 255, 255);
+    cv::Scalar lowerBoundBlue(105, 100, 100);
+    cv::Scalar upperBoundBlue(125, 200, 200);
     cv::inRange(hsv, lowerBoundBlue, upperBoundBlue, maskBlue);
 
     std::vector<std::pair<cv::Mat*, std::string>> masks = {
@@ -122,11 +122,11 @@ void camera_run() {
             if (ratio > 5.0) continue;
 
             double solidity = area_px / rectArea;
-            if (solidity < 0.6) continue;
+            if (solidity < 0.7) continue;
 
             // Estimate size from ground contour bounding box
             cv::Rect2f groundRect = cv::boundingRect(groundContour);
-            double size = groundRect.width;
+            double size = groundRect.width * 0.7;
 
             int colorIdx = -1;
             if (name == "red") colorIdx = 0;
@@ -156,7 +156,7 @@ void camera_run() {
                 }
             } else {
                 int sizeDigit = -1;
-                if (size >= 2.0 && size <= 4.0) sizeDigit = 1;
+                if (size >= 2.0 && size <= 5.0) sizeDigit = 1;
                 else if (size >= 5.0 && size <= 7.0) sizeDigit = 2;
 
                 if (sizeDigit != -1 && colorIdx != -1) {

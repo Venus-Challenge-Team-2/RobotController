@@ -9,6 +9,7 @@ extern "C" {
 #include <cstdio>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
 
 extern uint32_t read_distance(void);
 #include "mqtt.h"
@@ -27,13 +28,14 @@ void scan() {
 
     int total_steps = (int)(steps_rad * 2.0f * PI);
     set_stepper_command((int16_t)total_steps, (int16_t)-total_steps);
+    std::ostringstream oss;
+
+    auto last_update = std::chrono::steady_clock::now();
 
     while (!stepper_steps_done()) {
+        printf("Scan loop \n");
+        fflush(stdout);
         mqtt_update_position();
-
-        // Optional: camera_run() could be called here if needed,
-        // but it might slow down the loop too much.
-        camera_run();
 
         uint32_t dist_mm = read_distance();
 
@@ -48,15 +50,19 @@ void scan() {
             int gx = (int)(gx_coords);
             int gy = (int)(gy_coords);
 
-            // Boundary check for the 333x333 visualization grid (1000/3)
             if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
-                std::ostringstream oss;
-                oss << "222" << std::setfill('0') << std::setw(3) << gx
-                    << std::setfill('0') << std::setw(3) << gy << "\n";
-                uart_send_string(oss.str());
+                oss << "212" << std::setfill('0') << std::setw(3) << gx
+                    << std::setfill('0') << std::setw(3) << gy << "\n";              
             }
         }
+
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() >= 300) {
+            camera_run();
+            last_update = std::chrono::steady_clock::now();
+        }
     }
+    uart_send_string(oss.str());
     stepper_set_speed(15000, 15000);
     printf("Scan completed.\n");
 }
