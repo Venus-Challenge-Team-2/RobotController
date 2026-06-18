@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 PointData local_map[MAP_SIZE_X][MAP_SIZE_Y];
 bool is_exploration_active = false;
@@ -272,7 +274,7 @@ void exploration_start() {
     std::cout << "Goal exploration not active" << std::endl; 
     
     std::vector<std::pair<int, int>> enclosed = findEnclosedArea();
-    if (enclosed.size() >= 30 * 30) {
+    if (enclosed.size() >= 300) {
         printf("Goal continue enclosed size good");
         fflush(stdout);
         exploration_points = planScanPoints(enclosed);
@@ -377,3 +379,75 @@ void exploration_reset() {
     last_target = {-1, -1};
     current_waypoint = {-1, -1};
 }
+
+void exploration_generate_hole_border() {
+    int halfMapX = MAP_SIZE_X / 2;
+    int halfMapY = MAP_SIZE_Y / 2;
+    int borderRadius = 15;
+
+    int minX = std::max(halfMapX - borderRadius, 0);
+    int maxX = std::min(halfMapX + borderRadius, MAP_SIZE_X - 1);
+    int minY = std::max(halfMapY - borderRadius, 0);
+    int maxY = std::min(halfMapY + borderRadius, MAP_SIZE_Y - 1);
+
+    for (int gridX = 0; gridX < MAP_SIZE_X; gridX++) {
+        for (int gridY = 0; gridY < MAP_SIZE_Y; gridY++) {
+            bool isXEdge = (gridX == minX || gridX == maxX) && (gridY >= minY && gridY <= maxY);
+            bool isYEdge = (gridY == minY || gridY == maxY) && (gridX >= minX && gridX <= maxX);
+
+            if (isXEdge || isYEdge) {
+                local_map[gridX][gridY].object_data = HOLE;
+            }
+        }
+    }
+}
+
+void exploration_print_map() {
+    int minX = MAP_SIZE_X, maxX = 0, minY = MAP_SIZE_Y, maxY = 0;
+    bool found_hole = false;
+
+    // Find the bounding box of holes
+    for (int x = 0; x < MAP_SIZE_X; x++) {
+        for (int y = 0; y < MAP_SIZE_Y; y++) {
+            if (local_map[x][y].object_data == HOLE) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                found_hole = true;
+            }
+        }
+    }
+
+    if (!found_hole) {
+        // If no holes found, maybe print a default area around center
+        minX = MAP_SIZE_X / 2 - 20;
+        maxX = MAP_SIZE_X / 2 + 20;
+        minY = MAP_SIZE_Y / 2 - 20;
+        maxY = MAP_SIZE_Y / 2 + 20;
+    }
+
+    // Clear terminal
+    printf("\033[H\033[J");
+
+    // Print map (Y decreases downwards in terminal output for intuitive view)
+    for (int y = maxY; y >= minY; y--) {
+        for (int x = minX; x <= maxX; x++) {
+            char c = '.';
+            switch (local_map[x][y].object_data) {
+                case HOLE:       c = 'H'; break;
+                case MOUNTAIN:   c = 'W'; break;
+                case RED_CUBE:   c = 'R'; break;
+                case BLACK_CUBE: c = 'K'; break; // 'K' for Black
+                case BLUE_CUBE:  c = 'B'; break;
+                case GREEN_CUBE: c = 'G'; break;
+                case WHITE_CUBE: c = 'W'; break;
+                default:         c = '.'; break;
+            }
+            printf("%c", c);
+        }
+        printf("\n");
+    }
+    fflush(stdout);
+}
+

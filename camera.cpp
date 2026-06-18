@@ -9,6 +9,7 @@ extern "C" {
 #include <sstream>
 #include <cmath>
 #include "mqtt.h"
+#include "exploration.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -151,6 +152,7 @@ void camera_run() {
                                 int gx = (int)(cached_x + (gx_rel * std::cos(cached_angle) + gy_rel * std::sin(cached_angle)) / 3.0f);
                                 int gy = (int)(cached_y + (gy_rel * std::cos(cached_angle) - gx_rel * std::sin(cached_angle)) / 3.0f);
                                 if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+                                    exploration_add_obstacle(gx, gy, HOLE);
                                     oss << "214" << std::setfill('0') << std::setw(3) << gx
                                         << std::setfill('0') << std::setw(3) << gy << "\n";
                                 }
@@ -168,6 +170,17 @@ void camera_run() {
                     int gy = (int)(cached_y + (y_rel * std::cos(cached_angle) - x_rel * std::sin(cached_angle)) / 3.0f);
 
                     if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+                        ObjectData blockType = NO_OBJECT;
+                        if (colorIdx == 0) blockType = RED_CUBE;
+                        else if (colorIdx == 1) blockType = BLACK_CUBE;
+                        else if (colorIdx == 2) blockType = BLUE_CUBE;
+                        else if (colorIdx == 3) blockType = GREEN_CUBE;
+                        else if (colorIdx == 4) blockType = WHITE_CUBE;
+
+                        if (blockType != NO_OBJECT) {
+                            exploration_add_obstacle(gx, gy, blockType);
+                        }
+
                         oss << "2" << colorIdx << sizeDigit << std::setfill('0') << std::setw(3) << gx
                             << std::setfill('0') << std::setw(3) << gy << "\n";
                     }
