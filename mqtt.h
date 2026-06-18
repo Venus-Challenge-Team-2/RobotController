@@ -1,4 +1,5 @@
 #include <string>
+#include <cstdint>
 
 #ifndef MQTT_H
 #define MQTT_H
@@ -22,6 +23,7 @@ void mqtt_evasive_move_back();
 
 void uart_send_string(const std::string& str);
 void set_stepper_command(int16_t left, int16_t right);
+void mqtt_set_target(int x, int y);
 
 extern float robot_x;
 extern float robot_y;

@@ -13,6 +13,7 @@ extern "C" {
 
 extern uint32_t read_distance(void);
 #include "mqtt.h"
+#include "exploration.h"
 
 #ifndef PI
 #define PI 3.14159265358979323846f
@@ -50,14 +51,15 @@ void scan() {
             int gx = (int)(gx_coords);
             int gy = (int)(gy_coords);
 
-            if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+            if (gx >= 0 && gx < MAP_SIZE_X && gy >= 0 && gy < MAP_SIZE_Y) {
+                exploration_add_obstacle(gx, gy, MOUNTAIN);
                 oss << "212" << std::setfill('0') << std::setw(3) << gx
                     << std::setfill('0') << std::setw(3) << gy << "\n";              
             }
         }
 
         auto now = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() >= 300) {
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() >= 100) {
             camera_run();
             last_update = std::chrono::steady_clock::now();
         }

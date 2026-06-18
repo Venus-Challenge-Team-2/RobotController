@@ -32,6 +32,8 @@ find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs)
 add_executable(main
     main.cpp
     mqtt.cpp
+    exploration.cpp
+    exploration.h
     single.cpp
     vl53l0x.cpp
     vl53l0x.h

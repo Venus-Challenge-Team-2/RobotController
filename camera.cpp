@@ -52,9 +52,9 @@ void camera_run() {
     double focalLength = 837.0;
     cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
 
-    cv::Scalar lowerBoundRed1(0, 140, 140);
+    cv::Scalar lowerBoundRed1(0, 140, 100);
     cv::Scalar upperBoundRed1(10, 215, 210);
-    cv::Scalar lowerBoundRed2(170, 140, 140);
+    cv::Scalar lowerBoundRed2(170, 140, 100);
     cv::Scalar upperBoundRed2(180, 210, 210);
     cv::inRange(hsv, lowerBoundRed1, upperBoundRed1, maskRed1);
     cv::inRange(hsv, lowerBoundRed2, upperBoundRed2, maskRed2);
@@ -68,12 +68,12 @@ void camera_run() {
     cv::Scalar upperBoundBlack(180, 255, 30);
     cv::inRange(hsv, lowerBoundBlack, upperBoundBlack, maskBlack);
 
-    cv::Scalar lowerBoundGreen(40, 50, 120);
-    cv::Scalar upperBoundGreen(60, 120, 255);
+    cv::Scalar lowerBoundGreen(30, 50, 100);
+    cv::Scalar upperBoundGreen(70, 255, 255);
     cv::inRange(hsv, lowerBoundGreen, upperBoundGreen, maskGreen);
 
-    cv::Scalar lowerBoundBlue(105, 100, 100);
-    cv::Scalar upperBoundBlue(125, 200, 200);
+    cv::Scalar lowerBoundBlue(95, 100, 100);
+    cv::Scalar upperBoundBlue(135, 255, 255);
     cv::inRange(hsv, lowerBoundBlue, upperBoundBlue, maskBlue);
 
     std::vector<std::pair<cv::Mat*, std::string>> masks = {

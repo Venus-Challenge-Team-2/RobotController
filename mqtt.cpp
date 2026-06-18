@@ -12,6 +12,7 @@ extern "C" {
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include "exploration.h"
 
 #define PI 3.14159265358979323846f
 
@@ -36,6 +37,8 @@ float robot_caster_phi = PI; // Initialized to trailing position
 // Estimated slip factors (tunable)
 static const float CASTER_DRAG_S  = 0.005f; // 0.5% loss per cm of scrub
 static const float CASTER_DRAG_TH = 0.010f; // 1.0% loss per cm of scrub on rotation
+
+const float CM_PER_GRID_UNIT = 3.0f;
 
 static int target_x = 50;
 static int target_y = 50;
@@ -80,28 +83,65 @@ void mqtt_read(void)
     while (uart_has_data(UART0)) {
         char in = uart_recv(UART0);
         message[cursor++] = in;
-        int out = in;
-        std::cout << "aa" << out << std::endl;
-    }
 
-    if (cursor > 4 && message[4] == 0) {
-        char type = message[cursor - 7];
-        if (type == 0) {
-            target_x = 100 * message[cursor - 6]
-                     +  10 * message[cursor - 5]
-                     +       message[cursor - 4];
-            target_y = 100 * message[cursor - 3]
-                     +  10 * message[cursor - 2]
-                     +       message[cursor - 1];
-            printf("MQTT target -> X: %d  Y: %d\n", target_x, target_y);
+        // Safety: prevent overflow
+        if (cursor >= 1000) {
+            cursor = 0;
+            continue;
         }
-        cursor = 0;
-    } else if (cursor > 4 && message[4] == 1) {
-        scanning = true;
-        printf("MQTT scan command received\n");
-        cursor = 0;
-    }
 
+        // We need at least 4 bytes for the header
+        if (cursor >= 4) {
+            // Read 4-byte little-endian length
+            uint32_t payload_len = (uint8_t)message[0] |
+                                  ((uint8_t)message[1] << 8) |
+                                  ((uint8_t)message[2] << 16) |
+                                  ((uint8_t)message[3] << 24);
+
+            // Total message length is 4 bytes header + payload_len
+            uint32_t total_len = 4 + payload_len;
+
+            if (cursor >= total_len) {
+                // We have a full message.
+                // message[4] is the type
+                int type = message[4];
+                bool handled = false;
+
+                if (type == 0 && payload_len == 7) { // Target: type(1) + Y(3) + X(3)
+                    target_y = 100 * (message[5]) + 10 * (message[6]) + (message[7]);
+                    target_x = 100 * (message[8]) + 10 * (message[9]) + (message[10]);
+                    printf("MQTT target received -> X: %d  Y: %d\n", target_x, target_y);
+                    handled = true;
+                }
+                else if (type == 3 && payload_len == 8) { // Map Update: type(1) + obj(1) + X(3) + Y(3)
+                    int obj_type = message[5];
+                    int x = 100 * (message[6]) + 10 * (message[7]) + (message[8]);
+                    int y = 100 * (message[9]) + 10 * (message[10]) + (message[11]);
+                    exploration_add_obstacle(x, y, (ObjectData)obj_type);
+                    printf("MQTT map update -> X: %d  Y: %d  Type: %d\n", x, y, obj_type);
+                    handled = true;
+                }
+                else if (type == 4 && payload_len == 1) { // Exploration Start
+                    printf("MQTT exploration start command received\n");
+                    exploration_start();
+                    handled = true;
+                }
+                else if (type == 1 && payload_len == 1) { // Scan Request
+                    scanning = true;
+                    printf("MQTT scan command received\n");
+                    handled = true;
+                }
+
+                // Shift remaining bytes in buffer
+                size_t remaining = cursor - total_len;
+                for (size_t i = 0; i < remaining; i++) {
+                    message[i] = message[i + total_len];
+                }
+                cursor = remaining;
+            }
+        }
+    }
+    fflush(stdout);
 }
 
 void mqtt_update_position(void)
@@ -152,8 +192,8 @@ void mqtt_update_position(void)
     robot_angle += delta_angle;
 
     float avg_angle = robot_angle - (delta_angle / 2.0f);
-    robot_x += delta_dist * std::sin(avg_angle) / 3.0f;
-    robot_y += delta_dist * std::cos(avg_angle) / 3.0f;
+    robot_x += delta_dist * std::sin(avg_angle) / CM_PER_GRID_UNIT;
+    robot_y += delta_dist * std::cos(avg_angle) / CM_PER_GRID_UNIT;
 
     update = 1;
 }
@@ -180,8 +220,14 @@ void mqtt_navigation_control(void)
         printf("MQTT nav: rotating %.2f rad\n", angle_diff);
         set_stepper_command((int16_t)(-req_steps), (int16_t)req_steps);
     } else if (distance > 1.0f) {
-        int req_steps = (int)(steps_cm * distance * 3.0f);
-        printf("MQTT nav: moving %.2f cm\n", distance * 3.0f);
+        float move_cm = distance * CM_PER_GRID_UNIT;
+        // Safety cap: Never move more than 50cm in a single command to prevent runaway
+        if (move_cm > 50.0f) {
+            printf("MQTT nav: distance %.2f cm exceeds safety cap, capping to 50cm\n", move_cm);
+            move_cm = 50.0f;
+        }
+        int req_steps = (int)(steps_cm * move_cm);
+        printf("MQTT nav: moving %.2f cm (grid dist: %.2f)\n", move_cm, distance);
         set_stepper_command((int16_t)req_steps, (int16_t)req_steps);
     }
 }
@@ -223,7 +269,7 @@ void mqtt_send_coords(void) {
     int gy = (int)(robot_y);
     int temp = (int)robot_temperature;
 
-    if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+    if (gx >= 0 && gx < MAP_SIZE_X && gy >= 0 && gy < MAP_SIZE_Y) {
         oss << "3" << std::setfill('0') << std::setw(3) << gx
             << std::setfill('0') << std::setw(3) << gy
             << std::setfill('0') << std::setw(3) << temp << "\n";
@@ -236,12 +282,15 @@ void mqtt_send_coords(void) {
 }
 
 bool mqtt_is_idle(void) {
-    if (is_retreating && stepper_steps_done()) {
-        is_retreating = false;
-        target_x = (int)robot_x;
-        target_y = (int)robot_y;
+    if (is_retreating) {
+        if (stepper_steps_done()) {
+            is_retreating = false;
+            target_x = (int)robot_x;
+            target_y = (int)robot_y;
+            return true;
+        }
+        return false;
     }
-    //std::cout << active_left_cmd << std::endl;
     return (active_left_cmd == 0 && active_right_cmd == 0 && stepper_steps_done());
 }
 
@@ -264,7 +313,8 @@ void mqtt_send_hole() {
     int gx = (int)gx_coords;
     int gy = (int)gy_coords;
 
-    if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+    if (gx >= 0 && gx < MAP_SIZE_X && gy >= 0 && gy < MAP_SIZE_Y) {
+        exploration_add_obstacle(gx, gy, HOLE);
         std::ostringstream oss;
         oss << "214" << std::setfill('0') << std::setw(3) << gx
             << std::setfill('0') << std::setw(3) << gy << "\n";
@@ -280,7 +330,8 @@ void mqtt_send_wall(uint32_t dist_mm) {
     int gx = (int)gx_coords;
     int gy = (int)gy_coords;
 
-    if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
+    if (gx >= 0 && gx < MAP_SIZE_X && gy >= 0 && gy < MAP_SIZE_Y) {
+        exploration_add_obstacle(gx, gy, MOUNTAIN); // Using MOUNTAIN as wall/obstacle
         std::ostringstream oss;
         oss << "212" << std::setfill('0') << std::setw(3) << gx
             << std::setfill('0') << std::setw(3) << gy << "\n";
@@ -297,9 +348,7 @@ void mqtt_evasive_move_back() {
     set_stepper_command((int16_t)(-req_steps), (int16_t)(-req_steps));
 }
 
-void mqtt_destroy(void)
-{
-    stepper_destroy();
-    delete[] message;
-    message = nullptr;
+void mqtt_set_target(int x, int y) {
+    target_x = x;
+    target_y = y;
 }

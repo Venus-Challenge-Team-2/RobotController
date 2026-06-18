@@ -4,6 +4,7 @@ extern "C" {
 }
 #include "vl53l0x.h"
 #include "mqtt.h"
+#include "exploration.h"
 #include "ntc_temperature.h"
 #include "tcs3200.h"
 #include <cstdio>
@@ -50,6 +51,7 @@ int main() {
     tcs3200_init(&color_sensor, &color_config);
 
     mqtt_init();
+    exploration_init();
     camera_init();
     sleep_msec(300);
 
@@ -57,6 +59,7 @@ int main() {
     while (true) {
         mqtt_read();
         mqtt_update_position();
+        exploration_run();
         mqtt_navigation_control();
 
         double freq = tcs3200_read_frequency_hz(&color_sensor);
@@ -67,11 +70,18 @@ int main() {
                 printf("HOLE DETECTED by ground sensor!\n");
                 mqtt_send_hole();
                 mqtt_evasive_move_back();
+                if (is_exploration_active) exploration_request_scan();
             } else if (dist > 0 && dist < 50) {
                 printf("MQTT nav: CANCELLED (distance too close) %d\n", dist);
                 mqtt_send_wall(dist);
                 mqtt_evasive_move_back();
+                if (is_exploration_active) exploration_request_scan();
             }
+        }
+
+        if (scanning) {
+            scan();
+            scanning = false;
         }
 
         auto now = std::chrono::steady_clock::now();
@@ -80,10 +90,7 @@ int main() {
             ntc_temperature_read_celsius(&robot_temperature, NULL, NULL);
             mqtt_send_coords();
 
-            if (scanning) {
-                scan();
-                scanning = false;
-            } else if (mqtt_is_idle()) {
+            if (mqtt_is_idle()) {
                 mqtt_send_idle_msg();
                 std::cout << "Sending idle\n";
             } else {
