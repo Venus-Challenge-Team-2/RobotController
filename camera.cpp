@@ -49,6 +49,10 @@ void camera_run() {
     camera >> frame;
     if (frame.empty()) return;
 
+    float cached_x = robot_x;
+    float cached_y = robot_y;
+    float cached_angle = robot_angle;
+
     double focalLength = 837.0;
     cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
 
@@ -138,14 +142,14 @@ void camera_run() {
             if (name == "black") {
                 if (area_cm2 >= 100) {
                     std::cout << "HOLE at (" << (int)x_rel << ", " << (int)y_rel << ") Height: " << (int)groundRect.height << "cm Width: " << (int)groundRect.width << "cm" << std::endl;
-                    std::cout << "X: " <<robot_x << " Y: " << robot_y << std::endl;
+                    std::cout << "X: " << cached_x << " Y: " << cached_y << std::endl;
                     // Fill the map with hole points (grid where each point is 3x3cm)
 
                     for (float gy_rel = groundRect.y; gy_rel < groundRect.y + groundRect.height; gy_rel += 3.0f) {
                         for (float gx_rel = groundRect.x; gx_rel < groundRect.x + groundRect.width; gx_rel += 3.0f) {
                             if (cv::pointPolygonTest(groundContour, cv::Point2f(gx_rel, gy_rel), false) >= 0) {
-                                int gx = (int)(robot_x + (gx_rel * std::cos(robot_angle) + gy_rel * std::sin(robot_angle)) / 3.0f);
-                                int gy = (int)(robot_y + (gy_rel * std::cos(robot_angle) - gx_rel * std::sin(robot_angle)) / 3.0f);
+                                int gx = (int)(cached_x + (gx_rel * std::cos(cached_angle) + gy_rel * std::sin(cached_angle)) / 3.0f);
+                                int gy = (int)(cached_y + (gy_rel * std::cos(cached_angle) - gx_rel * std::sin(cached_angle)) / 3.0f);
                                 if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
                                     oss << "214" << std::setfill('0') << std::setw(3) << gx
                                         << std::setfill('0') << std::setw(3) << gy << "\n";
@@ -160,8 +164,8 @@ void camera_run() {
                 else if (size >= 5.0 && size <= 7.0) sizeDigit = 2;
 
                 if (sizeDigit != -1 && colorIdx != -1) {
-                    int gx = (int)(robot_x + (x_rel * std::cos(robot_angle) + y_rel * std::sin(robot_angle)) / 3.0f);
-                    int gy = (int)(robot_y + (y_rel * std::cos(robot_angle) - x_rel * std::sin(robot_angle)) / 3.0f);
+                    int gx = (int)(cached_x + (x_rel * std::cos(cached_angle) + y_rel * std::sin(cached_angle)) / 3.0f);
+                    int gy = (int)(cached_y + (y_rel * std::cos(cached_angle) - x_rel * std::sin(cached_angle)) / 3.0f);
 
                     if (gx >= 0 && gx < 333 && gy >= 0 && gy < 333) {
                         oss << "2" << colorIdx << sizeDigit << std::setfill('0') << std::setw(3) << gx
