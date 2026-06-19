@@ -119,11 +119,12 @@ void mqtt_read(void)
                     int y = 100 * (message[9]) + 10 * (message[10]) + (message[11]);
                     exploration_add_obstacle(x, y, (ObjectData)obj_type);
                     printf("MQTT map update -> X: %d  Y: %d  Type: %d\n", x, y, obj_type);
+                    exploration_start();
                     handled = true;
                 }
                 else if (type == 4 && payload_len == 1) { // Exploration Start
                     printf("MQTT exploration start command received\n");
-                    exploration_start();
+                    //exploration_start();
                     handled = true;
                 }
                 else if (type == 1 && payload_len == 1) { // Scan Request

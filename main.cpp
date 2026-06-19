@@ -52,11 +52,11 @@ int main() {
 
     mqtt_init();
     exploration_init();
-    exploration_generate_hole_border();
+    //exploration_generate_hole_border();
     camera_init();
     sleep_msec(300);
 
-    exploration_start();
+    //exploration_start();
 
     auto last_update = std::chrono::steady_clock::now();
     while (true) {
@@ -89,7 +89,7 @@ int main() {
 
         auto now = std::chrono::steady_clock::now();
         if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() >= 1000) {
-            exploration_print_map();
+            //exploration_print_map();
             camera_run();
             ntc_temperature_read_celsius(&robot_temperature, NULL, NULL);
             mqtt_send_coords();

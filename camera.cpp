@@ -70,11 +70,11 @@ void camera_run() {
     cv::inRange(hsv, lowerBoundWhite, upperBoundWhite, maskWhite);
 
     cv::Scalar lowerBoundBlack(0, 0, 0);
-    cv::Scalar upperBoundBlack(180, 255, 30);
+    cv::Scalar upperBoundBlack(180, 255, 60);
     cv::inRange(hsv, lowerBoundBlack, upperBoundBlack, maskBlack);
 
     cv::Scalar lowerBoundGreen(30, 50, 100);
-    cv::Scalar upperBoundGreen(70, 255, 255);
+    cv::Scalar upperBoundGreen(70, 150, 200);
     cv::inRange(hsv, lowerBoundGreen, upperBoundGreen, maskGreen);
 
     cv::Scalar lowerBoundBlue(95, 100, 100);
